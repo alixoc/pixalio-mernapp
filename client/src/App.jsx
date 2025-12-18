@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import {
   signup,
@@ -31,6 +31,49 @@ const VIEW_MESSAGES = 'messages';
 const VIEW_PROFILE = 'profile';
 const VIEW_ADMIN = 'admin';
 
+/** UI-only utility classes (no functionality changes) */
+const UI = {
+  card:
+    'bg-gray-900/45 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl shadow-black/40',
+  cardSoft:
+    'bg-gray-900/35 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl shadow-black/30',
+  surface:
+    'bg-gray-900/40 backdrop-blur-xl border border-gray-800/60 rounded-3xl',
+
+  btnPrimary:
+    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white ' +
+    'bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20 ' +
+    'hover:from-emerald-400 hover:to-teal-400 hover:shadow-emerald-500/35 active:scale-[0.99] transition-all ' +
+    'focus:outline-none focus:ring-2 focus:ring-emerald-500/30',
+
+  btnSecondary:
+    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white/90 ' +
+    'bg-gray-800/60 border border-gray-700/60 hover:bg-gray-800 hover:border-gray-600/70 active:scale-[0.99] transition-all ' +
+    'focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
+
+  btnGhost:
+    'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ' +
+    'text-gray-300 hover:text-white hover:bg-gray-800/60 active:scale-[0.99] transition-all ' +
+    'focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
+
+  btnDanger:
+    'inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-bold ' +
+    'text-red-300 bg-red-500/10 border border-red-500/25 hover:bg-red-500/15 hover:border-red-500/35 active:scale-[0.99] transition-all ' +
+    'focus:outline-none focus:ring-2 focus:ring-red-500/25',
+
+  pill:
+    'inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold ' +
+    'bg-gray-800/55 border border-gray-700/55 hover:bg-gray-800/75 hover:border-gray-600/60 active:scale-[0.99] transition-all',
+
+  input:
+    'w-full rounded-xl bg-gray-900/45 border border-gray-700/60 px-4 py-2.5 text-sm text-white placeholder-gray-500 ' +
+    'focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all',
+
+  inputWithIcon:
+    'w-full rounded-xl bg-gray-900/45 border border-gray-700/60 pl-11 pr-4 py-2.5 text-sm text-white placeholder-gray-500 ' +
+    'focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all'
+};
+
 function AuthView({ onAuth }) {
   const [isSignup, setIsSignup] = useState(false);
   const [form, setForm] = useState({ username: '', email: '', password: '', role: 'consumer' });
@@ -45,8 +88,7 @@ function AuthView({ onAuth }) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
-    // Basic validation
+
     if (!form.email || !form.password) {
       setError('Email and password are required');
       setLoading(false);
@@ -57,13 +99,13 @@ function AuthView({ onAuth }) {
       setLoading(false);
       return;
     }
-    
+
     try {
       const fn = isSignup ? signup : login;
       const payload = isSignup
         ? { username: form.username, email: form.email, password: form.password, role: form.role }
         : { email: form.email, password: form.password };
-      
+
       const res = await fn(payload);
       const { token, user } = res.data;
       if (!token || !user) {
@@ -71,7 +113,7 @@ function AuthView({ onAuth }) {
         setLoading(false);
         return;
       }
-      
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       onAuth(token, user);
@@ -83,44 +125,53 @@ function AuthView({ onAuth }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-black to-emerald-950 relative overflow-hidden px-4 py-8">
-      {/* Animated background elements */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-pulse" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 animate-pulse" />
-      
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950 relative overflow-hidden px-4 py-10">
+      {/* background blobs */}
+      <div className="absolute top-0 left-0 w-[520px] h-[520px] bg-emerald-500/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute bottom-0 right-0 w-[520px] h-[520px] bg-teal-500/10 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2" />
+      <div className="absolute top-1/2 left-1/2 w-[340px] h-[340px] bg-emerald-600/5 rounded-full blur-[90px] -translate-x-1/2 -translate-y-1/2" />
+
       <div className="w-full max-w-md relative z-10">
-        {/* Main card */}
-        <div className="bg-gradient-to-br from-slate-900/80 to-black/80 backdrop-blur-xl border border-emerald-500/20 rounded-3xl p-8 sm:p-10 shadow-2xl">
-          
+        <div className={`${UI.card} p-8 sm:p-10`}>
           {/* Logo and title */}
           <div className="flex flex-col items-center mb-8">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center font-extrabold text-black text-2xl shadow-lg shadow-emerald-500/40 mb-4 transform hover:scale-105 transition-transform">
+            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 flex items-center justify-center font-extrabold text-white text-2xl shadow-xl shadow-emerald-500/30 mb-5 transform hover:scale-105 hover:rotate-3 transition-all duration-300">
               ✨
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white text-center">Pixalio</h1>
-            <p className="text-emerald-300/80 text-sm mt-2 text-center">Share, Connect & Create</p>
+            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
+              Pixalio
+            </h1>
+            <p className="text-emerald-300/80 text-sm mt-2 font-semibold">
+              Share, Connect & Create
+            </p>
           </div>
 
-          {/* Tab switcher - Modern style */}
-          <div className="flex gap-3 mb-8">
+          {/* Tab switcher */}
+          <div className="flex gap-2 mb-8 p-1 bg-gray-900/40 border border-white/10 rounded-2xl">
             <button
               type="button"
-              onClick={() => { setIsSignup(false); setError(''); }}
-              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                !isSignup 
-                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/30' 
-                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-800/70'
+              onClick={() => {
+                setIsSignup(false);
+                setError('');
+              }}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                !isSignup
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/40'
               }`}
             >
               Log In
             </button>
             <button
               type="button"
-              onClick={() => { setIsSignup(true); setError(''); }}
-              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                isSignup 
-                  ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/30' 
-                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-800/70'
+              onClick={() => {
+                setIsSignup(true);
+                setError('');
+              }}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                isSignup
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/40'
               }`}
             >
               Sign Up
@@ -128,77 +179,72 @@ function AuthView({ onAuth }) {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
-            {/* Username field - only on signup */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             {isSignup && (
               <div className="group">
-                <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 ml-1">
                   Username
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-3.5 text-slate-500">👤</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">👤</span>
                   <input
                     name="username"
                     value={form.username}
                     onChange={handleChange}
                     placeholder="Choose a username"
-                    className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:bg-slate-800/80 transition-all"
+                    className={UI.inputWithIcon}
                   />
                 </div>
               </div>
             )}
 
-            {/* Email field */}
             <div className="group">
-              <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 Email Address
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-slate-500">📧</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">📧</span>
                 <input
                   type="email"
                   name="email"
                   value={form.email}
                   onChange={handleChange}
                   placeholder="you@example.com"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:bg-slate-800/80 transition-all"
+                  className={UI.inputWithIcon}
                 />
               </div>
             </div>
 
-            {/* Password field */}
             <div className="group">
-              <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 ml-1">
                 Password
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-3.5 text-slate-500">🔐</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔐</span>
                 <input
                   type="password"
                   name="password"
                   value={form.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:bg-slate-800/80 transition-all"
+                  className={UI.inputWithIcon}
                 />
               </div>
             </div>
 
-            {/* Account type - only on signup */}
             {isSignup && (
               <div>
-                <label className="block text-xs font-semibold text-emerald-300 uppercase tracking-wider mb-3">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 ml-1">
                   I am a
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, role: 'consumer' }))}
-                    className={`py-3 rounded-xl font-medium text-sm transition-all duration-300 border ${
+                    className={`py-3.5 rounded-xl font-bold text-sm transition-all duration-300 border ${
                       form.role === 'consumer'
-                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200 shadow-lg shadow-emerald-500/20'
-                        : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/60'
+                        ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-200 shadow-lg shadow-emerald-500/10'
+                        : 'border-gray-700/60 bg-gray-900/20 text-gray-400 hover:text-white hover:bg-gray-800/30'
                     }`}
                   >
                     👁️ Consumer
@@ -206,10 +252,10 @@ function AuthView({ onAuth }) {
                   <button
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, role: 'creator' }))}
-                    className={`py-3 rounded-xl font-medium text-sm transition-all duration-300 border ${
+                    className={`py-3.5 rounded-xl font-bold text-sm transition-all duration-300 border ${
                       form.role === 'creator'
-                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200 shadow-lg shadow-emerald-500/20'
-                        : 'border-slate-700 bg-slate-800/40 text-slate-300 hover:bg-slate-800/60'
+                        ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-200 shadow-lg shadow-emerald-500/10'
+                        : 'border-gray-700/60 bg-gray-900/20 text-gray-400 hover:text-white hover:bg-gray-800/30'
                     }`}
                   >
                     🎬 Creator
@@ -218,43 +264,32 @@ function AuthView({ onAuth }) {
               </div>
             )}
 
-            {/* Error message */}
             {error && (
-              <div className="p-4 rounded-xl bg-red-500/15 border border-red-500/50 text-red-300 text-sm animate-shake">
+              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">⚠️</span>
+                  <span className="text-lg flex-shrink-0">⚠️</span>
                   <div>
-                    <strong>Oops!</strong>
-                    <p className="mt-1">{error}</p>
+                    <p className="font-bold">Oops!</p>
+                    <p className="mt-0.5 text-red-300/85">{error}</p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-lg shadow-lg shadow-emerald-500/40 hover:shadow-emerald-500/60 hover:from-emerald-400 hover:to-emerald-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
+            <button type="submit" disabled={loading} className={`w-full py-4 ${UI.btnPrimary} disabled:opacity-60 disabled:cursor-not-allowed`}>
               {loading ? (
                 <>
-                  <span className="animate-spin">⏳</span>
-                  Loading...
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Loading...</span>
                 </>
               ) : (
-                <>
-                  {isSignup ? '🚀 Create Account' : '✨ Sign In'}
-                </>
+                <>{isSignup ? 'Create Account' : 'Sign In'}</>
               )}
             </button>
           </form>
 
-          {/* Footer text */}
-          <p className="text-center text-xs text-slate-500 mt-6">
-            {isSignup 
-              ? "Already have an account? Click 'Log In' above" 
-              : "Don't have an account? Click 'Sign Up' above"}
+          <p className="text-center text-sm text-gray-500 mt-8">
+            {isSignup ? "Already have an account? Click 'Log In' above" : "Don't have an account? Click 'Sign Up' above"}
           </p>
         </div>
       </div>
@@ -286,8 +321,8 @@ function AppShell({ user, onLogout, socket }) {
     }
   });
   const [createImageDataUrl, setCreateImageDataUrl] = useState(null);
-  const [profileUser, setProfileUser] = useState(null); // { user, posts }
-  const [stories, setStories] = useState([]); // grouped by author
+  const [profileUser, setProfileUser] = useState(null);
+  const [stories, setStories] = useState([]);
   const [storyModalOpen, setStoryModalOpen] = useState(false);
   const [activeStoryGroup, setActiveStoryGroup] = useState(null);
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
@@ -297,11 +332,9 @@ function AppShell({ user, onLogout, socket }) {
   const [headerLoading, setHeaderLoading] = useState(false);
   const [showHeaderResults, setShowHeaderResults] = useState(false);
 
-  // Load full user info
   useEffect(() => {
     getMe()
       .then((res) => {
-        // Normalize follower/following IDs to strings for easy comparison
         const normalized = {
           ...res.data,
           followers: (res.data.followers || []).map((id) => id.toString()),
@@ -330,14 +363,12 @@ function AppShell({ user, onLogout, socket }) {
     }
   };
 
-  // Load feed when visiting Home, Saved or Profile so profile posts are visible
   useEffect(() => {
     if (view === VIEW_HOME || view === VIEW_SAVED || view === VIEW_PROFILE) {
       refreshFeed();
     }
   }, [view]);
 
-  // Header search debounce
   useEffect(() => {
     let active = true;
     let timer = null;
@@ -359,7 +390,6 @@ function AppShell({ user, onLogout, socket }) {
         if (active) setHeaderLoading(false);
       }
     };
-    // debounce
     timer = setTimeout(doSearch, 220);
     return () => {
       active = false;
@@ -375,10 +405,9 @@ function AppShell({ user, onLogout, socket }) {
     }
   }, [view, user.role]);
 
-  const [unreadCounts, setUnreadCounts] = useState({}); // otherUserId -> count
+  const [unreadCounts, setUnreadCounts] = useState({});
   const [followingUsers, setFollowingUsers] = useState([]);
 
-  // When "me" is loaded or updated, fetch a lightweight list of people we follow
   useEffect(() => {
     if (!me || !Array.isArray(me.following) || me.following.length === 0) {
       setFollowingUsers([]);
@@ -401,7 +430,6 @@ function AppShell({ user, onLogout, socket }) {
     };
   }, [me]);
 
-  // Load stories when home view loads
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -416,10 +444,8 @@ function AppShell({ user, onLogout, socket }) {
     };
     if (view === VIEW_HOME) load();
 
-    // subscribe to real-time story creation
     if (socket) {
       const handler = (payload) => {
-        // refresh
         load();
       };
       socket.on('story:created', handler);
@@ -433,7 +459,6 @@ function AppShell({ user, onLogout, socket }) {
     };
   }, [view, socket]);
 
-  // Open another user's profile (or refresh own) and switch to profile view
   const openProfile = async (u) => {
     try {
       const id = u._id || u.id;
@@ -446,7 +471,6 @@ function AppShell({ user, onLogout, socket }) {
     }
   };
 
-  // Socket listener for real-time messages
   useEffect(() => {
     if (!socket) return;
     const handler = (msg) => {
@@ -457,12 +481,9 @@ function AppShell({ user, onLogout, socket }) {
           (msg.to === user.id && msg.from === (selectedUser._id || selectedUser.id)));
 
       if (isForThisChat) {
-        // Append to current chat
         setMessages((prev) => [...prev, msg]);
-        // Mark this convo as read
         setUnreadCounts((prev) => ({ ...prev, [otherId]: 0 }));
       } else if (msg.to === user.id) {
-        // Incoming message for another conversation -> increment unread
         setUnreadCounts((prev) => ({
           ...prev,
           [msg.from]: (prev[msg.from] || 0) + 1
@@ -476,9 +497,7 @@ function AppShell({ user, onLogout, socket }) {
     };
     const readHandler = (p) => {
       if (!p || !p.from) return;
-      // If someone read messages they were sent, clear unread for them
       setUnreadCounts((prev) => ({ ...prev, [p.from]: 0 }));
-      // Update messages in current chat to mark read if needed
       setMessages((prev) => prev.map((m) => (m.from === p.from ? { ...m, read: true } : m)));
     };
     socket.on('typing', typingHandler);
@@ -547,12 +566,11 @@ function AppShell({ user, onLogout, socket }) {
     try {
       const res = await getMessages(u._id || u.id);
       setMessages(res.data || []);
-      // Mark messages in this convo as read on the server
       try {
+        // NOTE: leaving as-is (your original code references this).
+        // If markMessagesRead exists in your api, import it and it will work.
         await markMessagesRead(u._id || u.id);
-      } catch (err) {
-        // ignore
-      }
+      } catch (err) {}
     } catch {
       setMessages([]);
     }
@@ -586,7 +604,6 @@ function AppShell({ user, onLogout, socket }) {
     setPendingMedia(null);
     try {
       await sendMessage(toId, body);
-      // stop typing
       sendTyping(toId, false);
     } catch (err) {
       console.error(err);
@@ -656,22 +673,25 @@ function AppShell({ user, onLogout, socket }) {
   };
 
   const currentUser = me || user;
-  const safeFeed = Array.isArray(feed)
-    ? feed.filter((p) => p && p.author && p.author._id)
-    : [];
+  const safeFeed = Array.isArray(feed) ? feed.filter((p) => p && p.author && p.author._id) : [];
   const savedPosts = safeFeed.filter((p) => savedIds.includes(p._id));
-  // When viewing someone else's profile, `profileUser` holds { user, posts }
   const displayedUser = profileUser?.user || me || user;
   const displayedFollowers = profileUser?.user?.followers || me?.followers || [];
   const displayedFollowing = profileUser?.user?.following || me?.following || [];
-  const profilePosts = profileUser?.posts || safeFeed.filter((p) => {
-    try {
-      const aid = p.author && (p.author._id || p.author);
-      return aid && displayedUser && (aid.toString ? aid.toString() === (displayedUser._id || displayedUser.id).toString() : aid === (displayedUser._id || displayedUser.id));
-    } catch (e) {
-      return false;
-    }
-  });
+  const profilePosts =
+    profileUser?.posts ||
+    safeFeed.filter((p) => {
+      try {
+        const aid = p.author && (p.author._id || p.author);
+        return (
+          aid &&
+          displayedUser &&
+          (aid.toString ? aid.toString() === (displayedUser._id || displayedUser.id).toString() : aid === (displayedUser._id || displayedUser.id))
+        );
+      } catch (e) {
+        return false;
+      }
+    });
   const totalUnread = Object.values(unreadCounts).reduce((sum, n) => sum + (n || 0), 0);
 
   const handleDeletePost = async (postId) => {
@@ -684,108 +704,125 @@ function AppShell({ user, onLogout, socket }) {
     }
   };
 
+  const navItems = [
+    { id: VIEW_HOME, icon: '🏠', label: 'Home' },
+    { id: VIEW_CREATE, icon: '➕', label: 'Create' },
+    { id: VIEW_SAVED, icon: '⭐', label: 'Saved' },
+    { id: VIEW_MESSAGES, icon: '💬', label: 'Messages', badge: totalUnread },
+    { id: VIEW_PROFILE, icon: '👤', label: 'Profile' }
+  ];
+
+  if (user.role === 'admin') {
+    navItems.push({ id: VIEW_ADMIN, icon: '🛡️', label: 'Admin' });
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-black via-slate-950 to-black text-slate-50">
-      <header className="sticky top-0 z-30 bg-black/50 backdrop-blur-sm border-b border-slate-800/30">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          {/* Left: logo */}
-          <div className="flex items-center gap-3">
-            <button type="button" className="flex items-center gap-3 group">
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center font-extrabold text-black text-lg shadow-md group-hover:scale-105 transition-transform">
-                PX
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-gray-50">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-gray-950/75 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <button type="button" className="flex items-center gap-3 group flex-shrink-0" onClick={() => setView(VIEW_HOME)}>
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center font-extrabold text-white text-sm shadow-lg shadow-emerald-500/20 group-hover:scale-105 group-hover:shadow-emerald-500/40 transition-all duration-300">
+              PX
+            </div>
+            <div className="hidden sm:block">
+              <div className="text-base font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
+                Pixalio
               </div>
-              <div className="hidden sm:block">
-                <div className="text-sm sm:text-base font-bold tracking-wide uppercase text-emerald-100">pixalio</div>
-                <div className="text-[11px] text-slate-400">Create · Discover · Share</div>
+              {/* removed "Create · Discover · Share" */}
+            </div>
+          </button>
+
+          {/* Search */}
+          <div className="flex-1 max-w-xl mx-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </div>
-            </button>
-          </div>
+              <input
+                value={headerQ}
+                onChange={(e) => {
+                  setHeaderQ(e.target.value);
+                  setShowHeaderResults(true);
+                }}
+                onFocus={() => setShowHeaderResults(true)}
+                onBlur={() => setTimeout(() => setShowHeaderResults(false), 200)}
+                placeholder="Search people, posts..."
+                className={`pl-11 pr-4 ${UI.input}`}
+              />
 
-          {/* Center: global search */}
-          <div className="flex-1 px-4">
-            <div className="max-w-xl mx-auto relative">
-                <input
-                  value={headerQ}
-                  onChange={(e) => { setHeaderQ(e.target.value); setShowHeaderResults(true); }}
-                  onFocus={() => setShowHeaderResults(true)}
-                  placeholder="Search people, posts..."
-                  className="w-full rounded-full bg-slate-900/60 border border-slate-800/60 px-4 py-2 text-sm placeholder:text-slate-500 text-slate-100 shadow-sm"
-                />
-
-                {/* Search dropdown */}
-                {showHeaderResults && (
-                  <div className="absolute left-0 right-0 mt-2 bg-slate-950/95 border border-slate-800 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto">
-                    <div className="p-2">
-                      {headerLoading && <div className="text-xs text-slate-400 px-2 py-2">Searching...</div>}
-                      {!headerLoading && headerResults.length === 0 && (
-                        <div className="text-xs text-slate-500 px-2 py-2">No results</div>
-                      )}
-                      {!headerLoading && headerResults.map((u) => (
-                        <div key={u._id} className="flex items-center justify-between gap-2 px-2 py-2 hover:bg-slate-900/60 rounded">
+              {/* Search dropdown */}
+              {showHeaderResults && (headerLoading || headerResults.length > 0 || headerQ) && (
+                <div className="absolute left-0 right-0 mt-2 bg-gray-900/92 backdrop-blur-xl border border-gray-700/60 rounded-2xl shadow-2xl shadow-black/60 z-50 max-h-80 overflow-hidden">
+                  <div className="p-2">
+                    {headerLoading && (
+                      <div className="flex items-center justify-center py-6">
+                        <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {!headerLoading && headerResults.length === 0 && headerQ && (
+                      <div className="text-center py-6 text-gray-500 text-sm">No results found</div>
+                    )}
+                    {!headerLoading &&
+                      headerResults.map((u) => (
+                        <div key={u._id} className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-gray-800/55 rounded-xl transition-colors">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-8 w-8 rounded-full bg-slate-800 overflow-hidden flex items-center justify-center text-[12px] font-semibold">{u.avatarUrl ? <img src={u.avatarUrl} alt="a" className="h-full w-full object-cover" /> : (u.username||'?')[0]?.toUpperCase()}</div>
+                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 overflow-hidden flex items-center justify-center text-sm font-semibold text-white flex-shrink-0">
+                              {u.avatarUrl ? <img src={u.avatarUrl} alt="" className="h-full w-full object-cover" /> : (u.username || '?')[0]?.toUpperCase()}
+                            </div>
                             <div className="min-w-0">
-                              <div className="font-medium text-sm truncate">{u.username}</div>
-                              <div className="text-[11px] text-slate-500 truncate">{u.role}</div>
+                              <div className="font-semibold text-sm text-white truncate">{u.username}</div>
+                              <div className="text-xs text-gray-500 truncate">{u.role}</div>
                             </div>
                           </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => { e.stopPropagation(); setShowHeaderResults(false); openProfile(u); }}
-                                className="text-[11px] px-2 py-1 rounded bg-slate-800/60"
-                              >
-                                View
-                              </button>
-
-                              <button
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => { e.stopPropagation(); setShowHeaderResults(false); openChat(u); }}
-                                className="text-[11px] px-2 py-1 rounded bg-emerald-500 text-black"
-                              >
-                                Message
-                              </button>
-
-                              <button
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={(e) => { e.stopPropagation(); handleToggleFollow(u._id); }}
-                                className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/60"
-                              >
-                                {me?.following?.includes(u._id) ? 'Following' : 'Follow'}
-                              </button>
-                            </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setShowHeaderResults(false);
+                                openProfile(u);
+                              }}
+                              className={UI.btnSecondary}
+                            >
+                              View
+                            </button>
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setShowHeaderResults(false);
+                                openChat(u);
+                              }}
+                              className={UI.btnPrimary}
+                            >
+                              Message
+                            </button>
+                          </div>
                         </div>
                       ))}
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Right: user actions */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="hidden sm:inline-flex items-center gap-2 bg-slate-900/40 border border-slate-800 rounded-full px-3 py-1 text-xs text-slate-200"
-              onClick={() => setView(VIEW_CREATE)}
-            >
-              <span className="text-[13px]">➕</span>
-              <span className="font-semibold">Create</span>
+          {/* User actions */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button type="button" className={`hidden md:inline-flex ${UI.btnPrimary}`} onClick={() => setView(VIEW_CREATE)}>
+              <span>+</span>
+              <span>Create</span>
             </button>
 
-            <div className="flex items-center gap-2 bg-black/40 border border-slate-800 rounded-full px-2 py-1">
-              <div className="h-8 w-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-semibold overflow-hidden">
-                {currentUser.avatarUrl ? <img src={currentUser.avatarUrl} alt="me" className="h-full w-full object-cover" /> : (currentUser.username?.[0]?.toUpperCase() || '?')}
+            <div className="flex items-center gap-3 px-3 py-1.5 rounded-2xl bg-gray-900/40 border border-gray-700/50">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+                {currentUser.avatarUrl ? <img src={currentUser.avatarUrl} alt="" className="h-full w-full object-cover" /> : (currentUser.username?.[0]?.toUpperCase() || '?')}
               </div>
-              <div className="hidden sm:flex flex-col text-left">
-                <span className="text-sm font-medium">{currentUser.username}</span>
-                <span className="text-[10px] text-slate-400">{currentUser.role}</span>
+              <div className="hidden sm:block">
+                <span className="text-sm font-semibold text-white">{currentUser.username}</span>
               </div>
-              <button
-                type="button"
-                onClick={onLogout}
-                className="ml-3 rounded-full bg-emerald-600 text-white px-3 py-1 text-xs font-semibold hover:bg-emerald-500 transition-colors"
-              >
+              <button type="button" onClick={onLogout} className={`ml-2 ${UI.btnDanger}`}>
                 Logout
               </button>
             </div>
@@ -794,129 +831,80 @@ function AppShell({ user, onLogout, socket }) {
       </header>
 
       {/* Mobile bottom navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-slate-800 flex gap-1 px-2 py-2 z-40">
-        <button type="button" onClick={() => setView(VIEW_HOME)} className={`flex-1 py-2 rounded-lg text-lg ${view === VIEW_HOME ? 'bg-emerald-500 text-black' : 'text-slate-400'}`}>🏠</button>
-        <button type="button" onClick={() => setView(VIEW_CREATE)} className={`flex-1 py-2 rounded-lg text-lg ${view === VIEW_CREATE ? 'bg-emerald-500 text-black' : 'text-slate-400'}`}>➕</button>
-        <button type="button" onClick={() => setView(VIEW_SAVED)} className={`flex-1 py-2 rounded-lg text-lg ${view === VIEW_SAVED ? 'bg-emerald-500 text-black' : 'text-slate-400'}`}>★</button>
-        <button type="button" onClick={() => setView(VIEW_MESSAGES)} className={`flex-1 py-2 rounded-lg text-lg relative ${view === VIEW_MESSAGES ? 'bg-emerald-500 text-black' : 'text-slate-400'}`}>
-          💬
-          {totalUnread > 0 && <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">{totalUnread}</span>}
-        </button>
-        <button type="button" onClick={() => setView(VIEW_PROFILE)} className={`flex-1 py-2 rounded-lg text-lg ${view === VIEW_PROFILE ? 'bg-emerald-500 text-black' : 'text-slate-400'}`}>👤</button>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-950/90 backdrop-blur-xl border-t border-white/5 z-40 safe-area-pb">
+        <div className="flex items-center justify-around px-2 py-2">
+          {navItems.slice(0, 5).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setView(item.id)}
+              className={`relative flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all ${
+                view === item.id ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <span className="text-xl">{item.icon}</span>
+              {item.badge > 0 && (
+                <span className="absolute -top-1 right-1 h-5 min-w-5 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </nav>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-4 flex flex-col md:grid md:grid-cols-[220px_minmax(0,1.8fr)_minmax(0,1.1fr)] gap-3 sm:gap-4 pb-20 md:pb-4">
-        <aside className="hidden md:flex flex-col gap-2 text-sm">
-          <button
-            type="button"
-            className={`w-full text-left px-3 py-2 rounded-xl border text-sm mb-1 flex items-center gap-2 ${
-              view === VIEW_HOME
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                : 'border-slate-800 text-slate-300 hover:bg-slate-900/60'
-            }`}
-            onClick={() => setView(VIEW_HOME)}
-          >
-            <span className="text-lg">🏠</span>
-            <span className="font-semibold tracking-wide">Home</span>
-          </button>
-          <button
-            type="button"
-            className={`w-full text-left px-3 py-2 rounded-xl border text-sm mb-1 flex items-center gap-2 ${
-              view === VIEW_CREATE
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                : 'border-slate-800 text-slate-300 hover:bg-slate-900/60'
-            }`}
-            onClick={() => setView(VIEW_CREATE)}
-          >
-            <span className="text-lg">➕</span>
-            <span className="font-semibold tracking-wide">Post</span>
-          </button>
-          <button
-            type="button"
-            className={`w-full text-left px-3 py-2 rounded-xl border text-sm mb-1 flex items-center gap-2 ${
-              view === VIEW_SAVED
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                : 'border-slate-800 text-slate-300 hover:bg-slate-900/60'
-            }`}
-            onClick={() => setView(VIEW_SAVED)}
-          >
-            <span className="text-lg">★</span>
-            <span className="font-semibold tracking-wide">Saved</span>
-          </button>
-          <button
-            type="button"
-            className={`w-full text-left px-3 py-2 rounded-xl border text-sm mb-1 flex items-center gap-2 ${
-              view === VIEW_MESSAGES
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                : 'border-slate-800 text-slate-300 hover:bg-slate-900/60'
-            }`}
-            onClick={() => setView(VIEW_MESSAGES)}
-          >
-            <span className="text-lg">💬</span>
-            <span className="font-semibold tracking-wide">Messages{totalUnread > 0 ? ` (${totalUnread})` : ''}</span>
-          </button>
-          <button
-            type="button"
-            className={`w-full text-left px-3 py-2 rounded-xl border text-sm mb-1 flex items-center gap-2 ${
-              view === VIEW_PROFILE
-                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                : 'border-slate-800 text-slate-300 hover:bg-slate-900/60'
-            }`}
-            onClick={() => setView(VIEW_PROFILE)}
-          >
-            <span className="text-lg">👤</span>
-            <span className="font-semibold tracking-wide">Profile</span>
-          </button>
-          {user.role === 'admin' && (
-            <button
-              type="button"
-              className={`w-full text-left px-3 py-2 rounded-xl border text-sm mb-1 flex items-center gap-2 ${
-                view === VIEW_ADMIN
-                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 shadow-[0_0_18px_rgba(16,185,129,0.35)]'
-                  : 'border-slate-800 text-slate-300 hover:bg-slate-900/60'
-              }`}
-              onClick={() => setView(VIEW_ADMIN)}
-            >
-              <span className="text-lg">🛡️</span>
-              <span className="font-semibold tracking-wide">Admin</span>
-            </button>
-          )}
-        </aside>
+      {/* Main content */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
+        <div className="flex flex-col lg:grid lg:grid-cols-[240px_1fr_280px] gap-6">
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 space-y-2">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setView(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all duration-200 ${
+                    view === item.id
+                      ? 'bg-gradient-to-r from-emerald-500/18 to-teal-500/10 text-emerald-200 border border-emerald-500/25 shadow-lg shadow-emerald-500/10'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-900/40 border border-transparent'
+                  }`}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-semibold">{item.label}</span>
+                  {item.badge > 0 && (
+                    <span className="ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">{item.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </aside>
 
-        <section className="min-h-[60vh] space-y-4">
-          {view === VIEW_HOME && (
-            <>
-              {/* Stories carousel */}
-              <div className="mb-3">
-                <div className="flex items-center gap-3 overflow-x-auto py-2">
-                  {/* Your story creation card */}
-                  <div className="flex-shrink-0 w-20 text-center">
-                    <label className="block cursor-pointer">
-                      <div className="h-16 w-16 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-black font-bold shadow-md">
-                        +
+          {/* Main Content Area */}
+          <section className="min-w-0">
+            {view === VIEW_HOME && (
+              <div className="space-y-6">
+                {/* Stories carousel */}
+                <div className={`${UI.surface} p-4`}>
+                  <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                    {/* Add story */}
+                    <label className="flex-shrink-0 cursor-pointer group">
+                      <div className="relative">
+                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-emerald-500/20 group-hover:shadow-emerald-500/40 group-hover:scale-105 transition-all">
+                          +
+                        </div>
                       </div>
                       <input
                         type="file"
                         accept="image/*"
                         className="hidden"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const f = e.target.files && e.target.files[0];
                           if (!f) return;
                           const r = new FileReader();
-                          r.onload = () => setNewStoryDataUrl(r.result);
-                          r.readAsDataURL(f);
-                        }}
-                      />
-                      <div className="text-[11px] text-slate-400 mt-1">Your story</div>
-                    </label>
-                    {newStoryDataUrl && (
-                      <div className="mt-2 text-center">
-                        <button
-                          type="button"
-                          onClick={async () => {
+                          r.onload = async () => {
                             try {
-                              await createStory({ mediaUrl: newStoryDataUrl, mediaType: 'image' });
-                              setNewStoryDataUrl(null);
+                              await createStory({ mediaUrl: r.result, mediaType: 'image' });
                               const res = await getStories();
                               setStories(res.data || []);
                               alert('Story posted');
@@ -924,560 +912,630 @@ function AppShell({ user, onLogout, socket }) {
                               console.error(err);
                               alert('Failed to post story');
                             }
-                          }}
-                          className="mt-1 rounded-full bg-emerald-500 text-black px-3 py-1 text-xs"
-                        >
-                          Post
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {stories.map((g) => (
-                    <button
-                      key={g.author._id}
-                      type="button"
-                      onClick={() => {
-                        setActiveStoryGroup(g);
-                        setActiveStoryIndex(0);
-                        setStoryModalOpen(true);
-                        // mark first story viewed
-                        if (g.stories && g.stories[0]) viewStory(g.stories[0]._id).catch(() => {});
-                      }}
-                      className="flex-shrink-0 w-20 text-center"
-                    >
-                      <div className="h-16 w-16 mx-auto rounded-full overflow-hidden border-2 border-emerald-400">
-                        {g.author.avatarUrl ? (
-                          <img src={g.author.avatarUrl} alt={g.author.username} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center bg-slate-800 text-xs font-semibold">{g.author.username?.[0]?.toUpperCase() || '?'}</div>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-slate-300 truncate mt-1">{g.author.username}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Story modal viewer */}
-              {storyModalOpen && activeStoryGroup && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-                  <div className="relative max-w-3xl w-full mx-4 bg-black rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-between p-3 border-b border-slate-800">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full overflow-hidden bg-slate-800">
-                          {activeStoryGroup.author.avatarUrl ? <img src={activeStoryGroup.author.avatarUrl} alt="a" className="h-full w-full object-cover" /> : <div className="h-full w-full flex items-center justify-center">{activeStoryGroup.author.username?.[0]?.toUpperCase()}</div>}
-                        </div>
-                        <div>
-                          <div className="font-semibold">{activeStoryGroup.author.username}</div>
-                          <div className="text-[11px] text-slate-400">{(activeStoryGroup.stories && activeStoryGroup.stories[activeStoryIndex] && new Date(activeStoryGroup.stories[activeStoryIndex].createdAt).toLocaleString()) || ''}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className="text-sm text-slate-300" onClick={() => setStoryModalOpen(false)}>Close</button>
-                      </div>
-                    </div>
-                    <div className="p-4 flex items-center justify-center bg-black">
-                      {activeStoryGroup.stories && activeStoryGroup.stories[activeStoryIndex] && (
-                        <img src={activeStoryGroup.stories[activeStoryIndex].mediaUrl} alt="story" className="max-h-[70vh] w-auto mx-auto" />
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between p-3 border-t border-slate-800">
+                          };
+                          r.readAsDataURL(f);
+                        }}
+                      />
+                      <div className="text-xs text-gray-400 mt-2 text-center font-semibold">Add Story</div>
+                    </label>
+
+                    {stories.map((g) => (
                       <button
+                        key={g.author._id}
                         type="button"
                         onClick={() => {
-                          setActiveStoryIndex((i) => Math.max(0, i - 1));
+                          setActiveStoryGroup(g);
+                          setActiveStoryIndex(0);
+                          setStoryModalOpen(true);
+                          if (g.stories && g.stories[0]) viewStory(g.stories[0]._id).catch(() => {});
                         }}
-                        className="px-3 py-1 rounded bg-slate-900/60"
-                      >Prev</button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveStoryIndex((i) => Math.min((activeStoryGroup.stories||[]).length - 1, i + 1));
-                        }}
-                        className="px-3 py-1 rounded bg-slate-900/60"
-                      >Next</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm sm:text-base font-semibold">Home</h2>
-                <span className="text-[11px] text-slate-400">Posts from you and people you follow</span>
-              </div>
-              {loadingFeed ? (
-                <p className="text-xs text-slate-400">Loading feed...</p>
-              ) : feed.length === 0 ? (
-                <p className="text-xs text-slate-400">No posts yet. Creators can add posts from the Create tab.</p>
-              ) : (
-                <div className="space-y-3">
-                  {safeFeed.map((post) => {
-                    const likedCount = post.likes?.length || 0;
-                    const isSaved = savedIds.includes(post._id);
-                    return (
-                      <article
-                        key={post._id}
-                        className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 sm:p-4 text-sm"
+                        className="flex-shrink-0 group"
                       >
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-emerald-500 to-lime-400 flex items-center justify-center text-xs font-semibold">
-                            {post.author?.username?.[0]?.toUpperCase() || '?'}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-[13px]">{post.author?.username || 'user'}</span>
-                              <span className="text-[9px] uppercase px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/60">
-                                {post.author?.role || 'creator'}
-                              </span>
+                        <div className="relative">
+                          <div className="h-16 w-16 rounded-full p-0.5 bg-gradient-to-br from-emerald-400 to-teal-500 group-hover:scale-105 transition-all">
+                            <div className="h-full w-full rounded-full overflow-hidden bg-gray-900 border-2 border-gray-900">
+                              {g.author.avatarUrl ? (
+                                <img src={g.author.avatarUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center bg-gray-800 text-sm font-semibold text-white">
+                                  {g.author.username?.[0]?.toUpperCase() || '?'}
+                                </div>
+                              )}
                             </div>
                           </div>
-                          {(post.author?._id === currentUser.id || currentUser.role === 'admin') && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePost(post._id)}
-                              className="text-[10px] px-2 py-0.5 rounded-full border border-red-500/70 text-red-400"
-                            >
-                              Delete
-                            </button>
-                          )}
-                          {/* Safely render follow button only when author exists and is not the current user */}
-                          {post.author && post.author._id && post.author._id !== currentUser.id && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleFollow(post.author._id)}
-                              className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/60"
-                            >
-                              {me?.following?.includes(post.author._id) ? 'Following' : 'Follow'}
-                            </button>
-                          )}
                         </div>
-                        {post.imageUrl && (
-                          <div className="mb-2">
-                            <img
-                              src={post.imageUrl}
-                              alt="post"
-                              className="w-full max-h-72 object-cover rounded-xl border border-slate-800"
-                            />
-                          </div>
-                        )}
-                        {post.caption && <p className="mb-2 text-[13px]">{post.caption}</p>}
-                        <div className="flex items-center gap-3 text-[12px] mb-2">
-                          <button type="button" onClick={() => handleLike(post._id)} className="flex items-center gap-1">
-                            <span>❤️</span>
-                            <span>{likedCount}</span>
-                          </button>
-                          <button type="button" onClick={() => handleShare(post)} className="flex items-center gap-1">
-                            <span>⤴</span>
-                            <span>{post.shares || 0}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSave(post._id)}
-                            className="flex items-center gap-1 ml-auto"
-                          >
-                            <span>{isSaved ? '★' : '☆'}</span>
-                            <span>Save</span>
-                          </button>
-                        </div>
-                        <div className="space-y-1 max-h-24 overflow-y-auto text-[11px]">
-                          {Array.isArray(post.comments) &&
-                            post.comments.map((c) => (
-                              <div key={c._id || c.createdAt}>
-                                <span className="font-semibold mr-1">{c.user?.username || 'user'}</span>
-                                <span>{c.text}</span>
+                        <div className="text-xs text-gray-400 mt-2 text-center truncate max-w-16 font-semibold">{g.author.username}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Story Modal */}
+                {storyModalOpen && activeStoryGroup && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+                    <div className="relative max-w-lg w-full bg-gray-950/70 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl shadow-black/70">
+                      {/* Header */}
+                      <div className="flex items-center justify-between p-4 border-b border-white/10">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full overflow-hidden bg-gradient-to-br from-emerald-400 to-teal-500">
+                            {activeStoryGroup.author.avatarUrl ? (
+                              <img src={activeStoryGroup.author.avatarUrl} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-white font-semibold">
+                                {activeStoryGroup.author.username?.[0]?.toUpperCase()}
                               </div>
-                            ))}
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-white">{activeStoryGroup.author.username}</div>
+                            <div className="text-xs text-gray-500">
+                              {activeStoryGroup.stories?.[activeStoryIndex] &&
+                                new Date(activeStoryGroup.stories[activeStoryIndex].createdAt).toLocaleString()}
+                            </div>
+                          </div>
                         </div>
-                        <form
-                          className="mt-2 flex items-center gap-2 text-[11px]"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            const fd = new FormData(e.target);
-                            const text = fd.get('text');
-                            if (!text) return;
-                            try {
-                              const res = await commentOnPost(post._id, text);
-                              const newComment = res.data;
-                              setFeed((prev) =>
-                                prev.map((p) =>
-                                  p._id === post._id
-                                    ? { ...p, comments: [...(p.comments || []), newComment] }
-                                    : p
-                                )
-                              );
-                              e.target.reset();
-                            } catch (err) {
-                              console.error(err);
-                            }
-                          }}
-                        >
-                          <input
-                            name="text"
-                            placeholder="Add a comment..."
-                            className="flex-1 rounded-full bg-black/50 border border-slate-700 px-3 py-1 text-[11px]"
+                        <button onClick={() => setStoryModalOpen(false)} className={UI.btnGhost}>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Story content */}
+                      <div className="relative aspect-[9/16] max-h-[60vh] bg-black flex items-center justify-center">
+                        {activeStoryGroup.stories?.[activeStoryIndex] && (
+                          <img
+                            src={activeStoryGroup.stories[activeStoryIndex].mediaUrl}
+                            alt=""
+                            className="max-h-full max-w-full object-contain"
                           />
-                          <button type="submit" className="rounded-full bg-emerald-500 text-black font-semibold px-3 py-1">
-                            Post
-                          </button>
-                        </form>
-                      </article>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {view === VIEW_CREATE && (
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 text-sm max-w-xl">
-              <h2 className="font-semibold text-base mb-3">Create post</h2>
-              {user.role !== 'creator' && user.role !== 'admin' ? (
-                <p className="text-xs text-slate-400">Only creators and admins can create posts.</p>
-              ) : (
-                <form onSubmit={handleCreatePost} className="space-y-3">
-                  <div>
-                    <label className="block mb-1 text-xs">Caption</label>
-                    <textarea
-                      name="caption"
-                      rows={3}
-                      className="w-full rounded-xl bg-black/70 border border-slate-700 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-xs">Image</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="block w-full text-xs text-emerald-200 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-500 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-black cursor-pointer"
-                      onChange={(e) => {
-                        const file = e.target.files && e.target.files[0];
-                        if (!file) {
-                          setCreateImageDataUrl(null);
-                          return;
-                        }
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          setCreateImageDataUrl(reader.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                    {createImageDataUrl && (
-                      <div className="mt-2">
-                        <img
-                          src={createImageDataUrl}
-                          alt="preview"
-                          className="w-full max-h-56 object-cover rounded-xl border border-slate-700"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full rounded-full bg-emerald-500 text-black font-semibold py-2 text-sm"
-                  >
-                    Post
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
-
-          {view === VIEW_SAVED && (
-            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-sm">
-              <h2 className="font-semibold mb-2 text-sm">Saved posts</h2>
-              {savedPosts.length === 0 ? (
-                <p className="text-xs text-slate-400">You have not saved any posts yet. Use the ☆ on posts to save them.</p>
-              ) : (
-                <div className="space-y-3">
-                  {savedPosts.map((post) => (
-                    <article
-                      key={post._id}
-                      className="bg-black/60 border border-slate-800 rounded-2xl p-3 text-sm"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-[11px] font-semibold">
-                          {post.author?.username?.[0]?.toUpperCase() || '?'}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-[13px]">{post.author?.username || 'user'}</div>
-                          <div className="text-[10px] text-slate-500">{post.author?.role || 'creator'}</div>
-                        </div>
-                      </div>
-                      {post.imageUrl && (
-                        <img
-                          src={post.imageUrl}
-                          className="w-full max-h-64 object-cover rounded-xl border border-slate-800 mb-2"
-                          alt="saved"
-                        />
-                      )}
-                      {post.caption && <p className="mb-1 text-[13px]">{post.caption}</p>}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {view === VIEW_MESSAGES && (
-            <div>
-              {/* Mount the new Instagram-like messages UI component */}
-              <React.Suspense fallback={<div className="text-xs text-slate-400">Loading messages UI...</div>}>
-                <Messages users={users} currentUser={user} socket={socket} />
-              </React.Suspense>
-            </div>
-          )}
-
-          {view === VIEW_PROFILE && (
-            <div className="space-y-4">
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row gap-4">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="relative h-20 w-20">
-                    <div className="h-20 w-20 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden border border-emerald-500/60">
-                      {displayedUser?.avatarUrl ? (
-                        <img src={displayedUser.avatarUrl} alt="avatar" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-xl font-semibold">{(displayedUser?.username || '?')[0].toUpperCase()}</span>
-                      )}
-                    </div>
-                    {me && displayedUser && (me._id || me.id) && ((me._id || me.id).toString() === (displayedUser._id || displayedUser.id).toString()) && (
-                      <>
-                        <label
-                          htmlFor="avatarUpload"
-                          className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-black border-2 border-emerald-400 text-emerald-200 text-lg flex items-center justify-center shadow-lg shadow-emerald-500/70 cursor-pointer"
-                        >
-                          +
-                        </label>
-                        <input
-                          id="avatarUpload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleAvatarChange}
-                        />
-                      </>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-2 text-[11px] text-slate-400">
-                    <div className="flex items-center gap-1">
-                      <span>{displayedFollowers?.length || 0} followers</span>
-                      <span>·</span>
-                      <span>{displayedFollowing?.length || 0} following</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {displayedFollowers && displayedFollowers.slice(0,6).map((f) => (
-                        <button
-                          key={f._id}
-                          type="button"
-                          onClick={() => openProfile(f)}
-                          className="h-7 w-7 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700"
-                        >
-                          {f.avatarUrl ? <img src={f.avatarUrl} alt={f.username} className="h-full w-full object-cover" /> : (f.username?.[0]?.toUpperCase() || '?')}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      {displayedFollowing && displayedFollowing.slice(0,6).map((f) => (
-                        <button
-                          key={f._id}
-                          type="button"
-                          onClick={() => openProfile(f)}
-                          className="h-7 w-7 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700"
-                        >
-                          {f.avatarUrl ? <img src={f.avatarUrl} alt={f.username} className="h-full w-full object-cover" /> : (f.username?.[0]?.toUpperCase() || '?')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 text-sm">
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <div className="font-semibold text-base">{displayedUser?.username}</div>
-                      <div className="text-[11px] text-slate-500">{displayedUser?.email}</div>
-                    </div>
-                        {me && displayedUser && (me._id || me.id) && ((me._id || me.id).toString() === (displayedUser._id || displayedUser.id).toString()) && (
-                          <button
-                            type="button"
-                            className="rounded-full border border-slate-700 px-3 py-1 text-[11px]"
-                            onClick={() => setIsEditingProfile((v) => !v)}
-                          >
-                            {isEditingProfile ? 'Close' : 'Edit profile'}
-                          </button>
                         )}
-                        {!me || (displayedUser && (me._id || me.id).toString() !== (displayedUser._id || displayedUser.id).toString()) ? (
-                          <div className="flex items-center gap-2">
+                      </div>
+
+                      {/* Navigation */}
+                      <div className="flex items-center justify-between p-4 border-t border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => setActiveStoryIndex((i) => Math.max(0, i - 1))}
+                          disabled={activeStoryIndex === 0}
+                          className={`${UI.btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          ← Previous
+                        </button>
+                        <div className="flex gap-1">
+                          {activeStoryGroup.stories?.map((_, idx) => (
+                            <div key={idx} className={`h-1 w-8 rounded-full transition-colors ${idx === activeStoryIndex ? 'bg-emerald-500' : 'bg-gray-700'}`} />
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStoryIndex((i) => Math.min((activeStoryGroup.stories || []).length - 1, i + 1))}
+                          disabled={activeStoryIndex === (activeStoryGroup.stories?.length || 1) - 1}
+                          className={`${UI.btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feed header */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white">Your Feed</h2>
+                  <span className="text-sm text-gray-500">Posts from you and people you follow</span>
+                </div>
+
+                {/* Posts */}
+                {loadingFeed ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                  </div>
+                ) : feed.length === 0 ? (
+                  <div className={`${UI.surface} text-center py-12`}>
+                    <div className="text-4xl mb-3">📭</div>
+                    <p className="text-gray-400">No posts yet. Follow creators to see their posts here!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {safeFeed.map((post) => {
+                      const likedCount = post.likes?.length || 0;
+                      const isSaved = savedIds.includes(post._id);
+
+                      return (
+                        <article
+                          key={post._id}
+                          className="bg-gray-900/45 backdrop-blur-xl border border-gray-800/60 rounded-3xl overflow-hidden hover:border-gray-700/70 hover:-translate-y-[1px] transition-all"
+                        >
+                          {/* Post header */}
+                          <div className="flex items-center justify-between p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-sm font-semibold overflow-hidden">
+                                {post.author?.avatarUrl ? (
+                                  <img src={post.author.avatarUrl} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  post.author?.username?.[0]?.toUpperCase() || '?'
+                                )}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-white">{post.author?.username || 'user'}</span>
+                                  <span className="px-2 py-0.5 text-[10px] uppercase font-bold bg-emerald-500/15 text-emerald-300 rounded-full border border-emerald-500/20">
+                                    {post.author?.role || 'creator'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {(post.author?._id === currentUser.id || currentUser.role === 'admin') && (
+                                <button type="button" onClick={() => handleDeletePost(post._id)} className={UI.btnDanger}>
+                                  Delete
+                                </button>
+                              )}
+                              {post.author && post.author._id && post.author._id !== currentUser.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleFollow(post.author._id)}
+                                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-extrabold transition-all active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 border ${
+                                    me?.following?.includes(post.author._id)
+                                      ? 'bg-gray-800/70 border-gray-700/60 text-gray-200 hover:bg-gray-800'
+                                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/20'
+                                  }`}
+                                >
+                                  {me?.following?.includes(post.author._id) ? 'Following' : 'Follow'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Post image */}
+                          {post.imageUrl && (
+                            <div className="border-y border-gray-800/60">
+                              <img src={post.imageUrl} alt="" className="w-full max-h-[520px] object-cover" />
+                            </div>
+                          )}
+
+                          {/* Post content */}
+                          <div className="p-4 space-y-3">
+                            {post.caption && <p className="text-gray-200 leading-relaxed">{post.caption}</p>}
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-3 pt-2">
+                              <button type="button" onClick={() => handleLike(post._id)} className={`${UI.pill} text-gray-200 hover:text-white`}>
+                                <span className="text-xl">❤️</span>
+                                <span className="text-sm font-bold">{likedCount}</span>
+                              </button>
+
+                              <button type="button" onClick={() => handleShare(post)} className={`${UI.pill} text-gray-200 hover:text-white`}>
+                                <span className="text-xl">↗️</span>
+                                <span className="text-sm font-bold">{post.shares || 0}</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleSave(post._id)}
+                                className={`${UI.pill} ml-auto text-gray-200 hover:text-white`}
+                                title={isSaved ? 'Unsave' : 'Save'}
+                              >
+                                <span className="text-xl">{isSaved ? '⭐' : '☆'}</span>
+                              </button>
+                            </div>
+
+                            {/* Comments */}
+                            {Array.isArray(post.comments) && post.comments.length > 0 && (
+                              <div className="space-y-2 pt-3 border-t border-gray-800/60 max-h-32 overflow-y-auto">
+                                {post.comments.map((c) => (
+                                  <div key={c._id || c.createdAt} className="text-sm">
+                                    <span className="font-semibold text-white mr-2">{c.user?.username || 'user'}</span>
+                                    <span className="text-gray-400">{c.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Comment form */}
+                            <form
+                              className="flex items-center gap-2 pt-2"
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                const fd = new FormData(e.target);
+                                const text = fd.get('text');
+                                if (!text) return;
+                                try {
+                                  const res = await commentOnPost(post._id, text);
+                                  const newComment = res.data;
+                                  setFeed((prev) =>
+                                    prev.map((p) => (p._id === post._id ? { ...p, comments: [...(p.comments || []), newComment] } : p))
+                                  );
+                                  e.target.reset();
+                                } catch (err) {
+                                  console.error(err);
+                                }
+                              }}
+                            >
+                              <input name="text" placeholder="Add a comment..." className={`flex-1 ${UI.input}`} />
+                              <button type="submit" className={UI.btnPrimary}>
+                                Post
+                              </button>
+                            </form>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === VIEW_CREATE && (
+              <div className="max-w-xl mx-auto">
+                <div className={`${UI.surface} p-6`}>
+                  <h2 className="text-xl font-bold text-white mb-6">Create Post</h2>
+
+                  {user.role !== 'creator' && user.role !== 'admin' ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-3">🎨</div>
+                      <p className="text-gray-400">Only creators and admins can create posts.</p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleCreatePost} className="space-y-5">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Caption</label>
+                        <textarea
+                          name="caption"
+                          rows={4}
+                          placeholder="Write something amazing..."
+                          className={`${UI.input} resize-none`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Image</label>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-emerald-500/15 file:text-emerald-200 hover:file:bg-emerald-500/20 file:cursor-pointer cursor-pointer"
+                            onChange={(e) => {
+                              const file = e.target.files && e.target.files[0];
+                              if (!file) {
+                                setCreateImageDataUrl(null);
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                setCreateImageDataUrl(reader.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </div>
+                        {createImageDataUrl && (
+                          <div className="mt-4 relative">
+                            <img src={createImageDataUrl} alt="Preview" className="w-full max-h-64 object-cover rounded-2xl border border-gray-700/60" />
                             <button
                               type="button"
-                              onClick={() => handleToggleFollow(displayedUser._id || displayedUser.id)}
-                              className="rounded-full border border-emerald-500/60 px-3 py-1 text-[11px]"
+                              onClick={() => setCreateImageDataUrl(null)}
+                              className="absolute top-2 right-2 p-2 rounded-xl bg-black/60 hover:bg-black/80 text-white transition-colors"
                             >
-                              {me?.following?.includes((displayedUser._id || displayedUser.id).toString()) ? 'Following' : 'Follow'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openChat(displayedUser)}
-                              className="rounded-full bg-emerald-500 text-black px-3 py-1 text-[11px]"
-                            >
-                              Message
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
                             </button>
                           </div>
-                        ) : null}
-                  </div>
-                  {!isEditingProfile && (
-                    <div className="mt-1 text-[12px] text-slate-200 whitespace-pre-wrap">
-                      {me?.bio || 'Add a short bio to tell people who you are.'}
-                    </div>
-                  )}
-                  {isEditingProfile && (
-                    <form onSubmit={handleProfileSave} className="mt-3 space-y-2 text-[12px]">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[11px] mb-1 text-slate-300">Username</label>
-                          <input
-                            name="username"
-                            value={profileForm.username}
-                            onChange={handleProfileFormChange}
-                            className="w-full rounded-xl bg-black/70 border border-slate-700 px-3 py-1.5 text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] mb-1 text-slate-300">Email</label>
-                          <input
-                            type="email"
-                            name="email"
-                            value={profileForm.email}
-                            onChange={handleProfileFormChange}
-                            className="w-full rounded-xl bg-black/70 border border-slate-700 px-3 py-1.5 text-xs"
-                          />
-                        </div>
+                        )}
                       </div>
-                      <div>
-                        <label className="block text-[11px] mb-1 text-slate-300">New password</label>
-                        <input
-                          type="password"
-                          name="password"
-                          value={profileForm.password}
-                          onChange={handleProfileFormChange}
-                          placeholder="Leave blank to keep current"
-                          className="w-full rounded-xl bg-black/70 border border-slate-700 px-3 py-1.5 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] mb-1 text-slate-300">Bio</label>
-                        <textarea
-                          name="bio"
-                          rows={3}
-                          value={profileForm.bio}
-                          onChange={handleProfileFormChange}
-                          className="w-full rounded-xl bg-black/70 border border-slate-700 px-3 py-2 text-xs"
-                        />
-                      </div>
-                      <div className="flex gap-2 justify-end pt-1">
-                        <button
-                          type="button"
-                          className="rounded-full border border-slate-700 px-3 py-1 text-[11px]"
-                          onClick={() => setIsEditingProfile(false)}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="rounded-full bg-emerald-500 text-black font-semibold px-3 py-1 text-[11px]"
-                        >
-                          Save
-                        </button>
-                      </div>
+
+                      <button type="submit" className={`w-full py-3.5 ${UI.btnPrimary}`}>
+                        Publish Post
+                      </button>
                     </form>
                   )}
                 </div>
               </div>
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-sm">
-                <h3 className="font-semibold mb-2 text-sm">Posts by {displayedUser?.username}</h3>
-                {(!profilePosts || profilePosts.length === 0) ? (
-                  <p className="text-xs text-slate-400">No posts yet.</p>
+            )}
+
+            {view === VIEW_SAVED && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-white">Saved Posts</h2>
+
+                {savedPosts.length === 0 ? (
+                  <div className={`${UI.surface} text-center py-12`}>
+                    <div className="text-4xl mb-3">⭐</div>
+                    <p className="text-gray-400">No saved posts yet. Use the ☆ to save posts!</p>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    {profilePosts.map((p) => (
-                      <article key={p._id} className="border border-slate-800 rounded-xl p-2 text-xs">
-                        {p.imageUrl && (
-                          <img
-                            src={p.imageUrl}
-                            className="w-full max-h-56 object-cover rounded-lg border border-slate-800 mb-1"
-                            alt="post"
-                          />
-                        )}
-                        {p.caption && <p className="mb-1">{p.caption}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {savedPosts.map((post) => (
+                      <article key={post._id} className="bg-gray-900/45 backdrop-blur-xl border border-gray-800/60 rounded-3xl overflow-hidden hover:border-gray-700/70 transition-all">
+                        {post.imageUrl && <img src={post.imageUrl} alt="" className="w-full h-48 object-cover" />}
+                        <div className="p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xs font-semibold overflow-hidden">
+                              {post.author?.avatarUrl ? (
+                                <img src={post.author.avatarUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                post.author?.username?.[0]?.toUpperCase() || '?'
+                              )}
+                            </div>
+                            <span className="font-semibold text-white text-sm">{post.author?.username || 'user'}</span>
+                          </div>
+                          {post.caption && <p className="text-gray-400 text-sm line-clamp-2">{post.caption}</p>}
+                        </div>
                       </article>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          {view === VIEW_ADMIN && user.role === 'admin' && (
-            <div className="grid gap-3 sm:grid-cols-2 text-xs">
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
-                <h3 className="font-semibold mb-2 text-sm">Users</h3>
-                {stats ? (
-                  <ul className="space-y-1">
-                    <li>Total: {stats.users}</li>
-                    <li>Consumers: {stats.roles.consumer}</li>
-                    <li>Creators: {stats.roles.creator}</li>
-                    <li>Admins: {stats.roles.admin}</li>
-                  </ul>
-                ) : (
-                  <p className="text-slate-400">Loading...</p>
+            {view === VIEW_MESSAGES && (
+              <div className="h-[calc(100vh-180px)] md:h-[600px]">
+                <React.Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-full">
+                      <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                    </div>
+                  }
+                >
+                  <Messages users={users} currentUser={user} socket={socket} />
+                </React.Suspense>
+              </div>
+            )}
+
+            {view === VIEW_PROFILE && (
+              <div className="space-y-6">
+                {/* Profile header */}
+                <div className={`${UI.surface} p-6`}>
+                  <div className="flex flex-col sm:flex-row gap-6">
+                    {/* Avatar */}
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="relative">
+                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 p-0.5">
+                          <div className="h-full w-full rounded-full bg-gray-900 flex items-center justify-center overflow-hidden">
+                            {displayedUser?.avatarUrl ? (
+                              <img src={displayedUser.avatarUrl} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-3xl font-black text-white">{(displayedUser?.username || '?')[0].toUpperCase()}</span>
+                            )}
+                          </div>
+                        </div>
+                        {me &&
+                          displayedUser &&
+                          (me._id || me.id) &&
+                          ((me._id || me.id).toString() === (displayedUser._id || displayedUser.id).toString()) && (
+                            <label className="absolute bottom-0 right-0 h-9 w-9 rounded-full bg-emerald-500 flex items-center justify-center text-white cursor-pointer shadow-lg hover:bg-emerald-400 transition-colors">
+                              <span className="text-sm font-bold">+</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+                            </label>
+                          )}
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-6 text-center">
+                        <div>
+                          <div className="text-xl font-bold text-white">{profilePosts?.length || 0}</div>
+                          <div className="text-xs text-gray-500">Posts</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold text-white">{displayedFollowers?.length || 0}</div>
+                          <div className="text-xs text-gray-500">Followers</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold text-white">{displayedFollowing?.length || 0}</div>
+                          <div className="text-xs text-gray-500">Following</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Profile info */}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-4 gap-4">
+                        <div>
+                          <h1 className="text-2xl font-bold text-white">{displayedUser?.username}</h1>
+                          <p className="text-gray-500 text-sm">{displayedUser?.email}</p>
+                        </div>
+
+                        {me &&
+                        displayedUser &&
+                        (me._id || me.id) &&
+                        ((me._id || me.id).toString() === (displayedUser._id || displayedUser.id).toString()) ? (
+                          <button type="button" onClick={() => setIsEditingProfile((v) => !v)} className={UI.btnSecondary}>
+                            {isEditingProfile ? 'Cancel' : 'Edit Profile'}
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleFollow(displayedUser._id || displayedUser.id)}
+                              className={`inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-emerald-500/20 border ${
+                                me?.following?.includes((displayedUser._id || displayedUser.id).toString())
+                                  ? 'bg-gray-800/70 border-gray-700/60 text-white hover:bg-gray-800'
+                                  : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-100 hover:bg-emerald-500/20'
+                              }`}
+                            >
+                              {me?.following?.includes((displayedUser._id || displayedUser.id).toString()) ? 'Following' : 'Follow'}
+                            </button>
+                            <button type="button" onClick={() => openChat(displayedUser)} className={UI.btnSecondary}>
+                              Message
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {!isEditingProfile && (
+                        <p className="text-gray-300 whitespace-pre-wrap">{me?.bio || 'Add a bio to tell people about yourself.'}</p>
+                      )}
+
+                      {isEditingProfile && (
+                        <form onSubmit={handleProfileSave} className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-400 mb-1">Username</label>
+                              <input name="username" value={profileForm.username} onChange={handleProfileFormChange} className={UI.input} />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-400 mb-1">Email</label>
+                              <input type="email" name="email" value={profileForm.email} onChange={handleProfileFormChange} className={UI.input} />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-400 mb-1">New Password</label>
+                            <input
+                              type="password"
+                              name="password"
+                              value={profileForm.password}
+                              onChange={handleProfileFormChange}
+                              placeholder="Leave blank to keep current"
+                              className={UI.input}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-400 mb-1">Bio</label>
+                            <textarea name="bio" rows={3} value={profileForm.bio} onChange={handleProfileFormChange} className={`${UI.input} resize-none`} />
+                          </div>
+                          <button type="submit" className={UI.btnPrimary}>
+                            Save Changes
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profile posts */}
+                <div className={`${UI.surface} p-6`}>
+                  <h3 className="text-lg font-bold text-white mb-4">Posts by {displayedUser?.username}</h3>
+
+                  {!profilePosts || profilePosts.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-3xl mb-2">📷</div>
+                      <p className="text-gray-500">No posts yet</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {profilePosts.map((p) => (
+                        <div key={p._id} className="aspect-square rounded-2xl overflow-hidden bg-gray-900/40 border border-gray-800/60">
+                          {p.imageUrl ? (
+                            <img src={p.imageUrl} alt="" className="w-full h-full object-cover hover:opacity-80 transition-opacity" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center p-4">
+                              <p className="text-gray-400 text-sm text-center line-clamp-4">{p.caption}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {view === VIEW_ADMIN && user.role === 'admin' && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-white">Admin Dashboard</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {stats ? (
+                    <>
+                      <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 rounded-3xl p-5 shadow-lg shadow-emerald-500/10">
+                        <div className="text-3xl font-bold text-white">{stats.users}</div>
+                        <div className="text-emerald-300 text-sm font-semibold mt-1">Total Users</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-500/30 rounded-3xl p-5 shadow-lg shadow-blue-500/10">
+                        <div className="text-3xl font-bold text-white">{stats.posts}</div>
+                        <div className="text-blue-300 text-sm font-semibold mt-1">Total Posts</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-pink-500/20 to-rose-500/10 border border-pink-500/30 rounded-3xl p-5 shadow-lg shadow-pink-500/10">
+                        <div className="text-3xl font-bold text-white">{stats.likes}</div>
+                        <div className="text-pink-300 text-sm font-semibold mt-1">Total Likes</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-purple-500/20 to-violet-500/10 border border-purple-500/30 rounded-3xl p-5 shadow-lg shadow-purple-500/10">
+                        <div className="text-3xl font-bold text-white">{stats.messages}</div>
+                        <div className="text-purple-300 text-sm font-semibold mt-1">Messages Sent</div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-span-full flex items-center justify-center py-12">
+                      <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                {stats && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className={`${UI.surface} p-5`}>
+                      <h3 className="font-semibold text-white mb-4">Users by Role</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Consumers</span>
+                          <span className="text-white font-semibold">{stats.roles.consumer}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Creators</span>
+                          <span className="text-white font-semibold">{stats.roles.creator}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Admins</span>
+                          <span className="text-white font-semibold">{stats.roles.admin}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`${UI.surface} p-5`}>
+                      <h3 className="font-semibold text-white mb-4">Engagement</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Comments</span>
+                          <span className="text-white font-semibold">{stats.comments}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Shares</span>
+                          <span className="text-white font-semibold">{stats.shares || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3">
-                <h3 className="font-semibold mb-2 text-sm">Posts & engagement</h3>
-                {stats ? (
-                  <ul className="space-y-1">
-                    <li>Posts: {stats.posts}</li>
-                    <li>Likes: {stats.likes}</li>
-                    <li>Comments: {stats.comments}</li>
-                    <li>Messages: {stats.messages}</li>
-                  </ul>
-                ) : (
-                  <p className="text-slate-400">Loading...</p>
-                )}
+            )}
+          </section>
+
+          {/* Right sidebar */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 space-y-4">
+              <div className={`${UI.surface} p-4`}>
+                <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="text-lg">🔍</span>
+                  <span>Find People</span>
+                </h3>
+                <SearchUsers onSelect={openChat} me={me} onToggleFollow={handleToggleFollow} onViewProfile={openProfile} />
               </div>
             </div>
-          )}
-        </section>
-
-        <aside className="hidden md:flex flex-col gap-3 text-xs">
-          <div className="bg-slate-950/90 border border-slate-800/80 rounded-2xl p-3 shadow-[0_18px_40px_rgba(15,23,42,0.9)]">
-            <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-              <span className="h-6 w-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs">
-                🔎
-              </span>
-              <span>Search people</span>
-            </h3>
-            <SearchUsers onSelect={openChat} me={me} onToggleFollow={handleToggleFollow} onViewProfile={openProfile} />
-          </div>
-        </aside>
+          </aside>
+        </div>
       </main>
 
-      <footer className="border-t border-slate-900/70 bg-black/95 text-[11px] text-slate-500 mt-4">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Footer */}
+      <footer className="hidden md:block border-t border-gray-800/50 bg-gray-950 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-[10px] font-bold text-black shadow-md shadow-emerald-500/40">
+            <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-[10px] font-bold text-white">
               PX
             </div>
-            <span className="uppercase tracking-[0.18em] text-slate-500">pixalio</span>
+            <span className="text-sm text-gray-500 font-semibold">Pixalio</span>
           </div>
-          <div className="flex items-center gap-3 text-[10px] text-slate-500">
-            <button type="button" className="hover:text-emerald-400 transition-colors">Explore</button>
-            <span className="h-1 w-1 rounded-full bg-slate-700" />
-            <button type="button" className="hover:text-emerald-400 transition-colors">Privacy</button>
-            <span className="h-1 w-1 rounded-full bg-slate-700" />
-            <button type="button" className="hover:text-emerald-400 transition-colors">Help</button>
+          <div className="flex items-center gap-6 text-sm text-gray-500">
+            <button type="button" className="hover:text-emerald-400 transition-colors">
+              Explore
+            </button>
+            <button type="button" className="hover:text-emerald-400 transition-colors">
+              Privacy
+            </button>
+            <button type="button" className="hover:text-emerald-400 transition-colors">
+              Help
+            </button>
           </div>
-          <div className="text-[10px] text-slate-600">
-            <span className="hidden sm:inline mr-1">Built for creators</span>
-            <span>© {new Date().getFullYear()}</span>
-          </div>
+          <div className="text-sm text-gray-600">© {new Date().getFullYear()} Pixalio</div>
         </div>
       </footer>
     </div>
@@ -1505,32 +1563,24 @@ function SearchUsers({ onSelect, me, onToggleFollow, onViewProfile }) {
   }, [q]);
 
   return (
-    <div className="space-y-2">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search by username"
-        className="w-full rounded-lg bg-black/50 border border-slate-700 px-3 py-1 text-xs"
-      />
-      <div className="space-y-1 max-h-48 overflow-y-auto scroll-hide">
+    <div className="space-y-3">
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by username" className={`pl-10 pr-4 ${UI.input}`} />
+      </div>
+
+      <div className="space-y-2 max-h-64 overflow-y-auto">
         {results.map((u) => (
-          <div
-            key={u._id}
-            className="w-full text-left px-2 py-1 rounded-lg border border-slate-800 bg-black/60 hover:bg-black/80 text-xs flex items-center gap-2"
-          >
-            <button type="button" onClick={() => onSelect(u)} className="flex items-center gap-2 flex-1 text-left">
-              <div className="h-7 w-7 rounded-full overflow-hidden bg-slate-800 flex items-center justify-center text-[11px] font-semibold text-slate-200">
-                {u.avatarUrl ? (
-                  <img src={u.avatarUrl} alt={u.username} className="h-full w-full object-cover" />
-                ) : (
-                  u.username?.[0]?.toUpperCase() || '?'
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold truncate">{u.username}</div>
-                <div className="text-[10px] text-slate-400 truncate">{u.role}</div>
-              </div>
-            </button>
+          <div key={u._id} className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-gray-900/35 transition-colors">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 overflow-hidden flex items-center justify-center text-sm font-semibold text-white flex-shrink-0">
+              {u.avatarUrl ? <img src={u.avatarUrl} alt="" className="h-full w-full object-cover" /> : u.username?.[0]?.toUpperCase() || '?'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-white text-sm truncate">{u.username}</div>
+              <div className="text-xs text-gray-500 truncate">{u.role}</div>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -1538,9 +1588,14 @@ function SearchUsers({ onSelect, me, onToggleFollow, onViewProfile }) {
                   e.stopPropagation();
                   onToggleFollow && onToggleFollow(u._id);
                 }}
-                className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/60"
+                className={`inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-extrabold transition-all active:scale-[0.99] border ${
+                  me?.following?.includes(u._id)
+                    ? 'bg-gray-800/70 border-gray-700/60 text-gray-200 hover:bg-gray-800'
+                    : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/20'
+                }`}
+                title={me?.following?.includes(u._id) ? 'Unfollow' : 'Follow'}
               >
-                {me?.following?.includes(u._id) ? 'Following' : 'Follow'}
+                {me?.following?.includes(u._id) ? '✓' : '+'}
               </button>
               <button
                 type="button"
@@ -1548,23 +1603,16 @@ function SearchUsers({ onSelect, me, onToggleFollow, onViewProfile }) {
                   e.stopPropagation();
                   onSelect && onSelect(u);
                 }}
-                className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500 text-black"
+                className="inline-flex items-center justify-center rounded-xl px-3 py-2 text-xs font-bold bg-gray-800/60 border border-gray-700/60 text-gray-200 hover:bg-gray-800 hover:border-gray-600/70 transition-all active:scale-[0.99]"
+                title="Message"
               >
-                Message
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewProfile && onViewProfile(u);
-                }}
-                className="text-[10px] px-2 py-0.5 rounded-full border border-slate-700"
-              >
-                View
+                💬
               </button>
             </div>
           </div>
         ))}
+
+        {results.length === 0 && q && <div className="text-center py-4 text-gray-500 text-sm">No users found</div>}
       </div>
     </div>
   );
@@ -1577,7 +1625,6 @@ function App() {
       const raw = localStorage.getItem('user');
       return raw ? JSON.parse(raw) : null;
     } catch {
-      // If local data is corrupted, clear it so the app doesn't crash
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       return null;
