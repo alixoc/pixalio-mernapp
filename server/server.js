@@ -1,5 +1,4 @@
 require('dotenv').config();
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -20,27 +19,24 @@ const storiesRoutes = require('./routes/stories');
 const app = express();
 const server = http.createServer(app);
 
-// 🔑 Azure will inject PORT automatically
+// 🔑 Port setup
 const PORT = process.env.PORT || 5000;
 
-/* ============================
-   CORS CONFIG (AZURE SAFE)
-============================ */
+// ============================
+// CORS CONFIG (AZURE SAFE)
+// ============================
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true); // allow Postman / server-to-server
 
-    // Local dev
     if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
       return callback(null, true);
     }
 
-    // Azure Static Web Apps
     if (origin.endsWith('.azurestaticapps.net')) {
       return callback(null, true);
     }
 
-    // Custom domain / env-based
     if (process.env.CLIENT_ORIGIN && origin === process.env.CLIENT_ORIGIN) {
       return callback(null, true);
     }
@@ -52,12 +48,19 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-/* ============================
-   SOCKET.IO
-============================ */
-const io = new Server(server, {
-  cors: corsOptions
-});
+// ============================
+// MIDDLEWARE
+// ============================
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
+app.use(morgan('dev'));
+
+// ============================
+// SOCKET.IO SETUP
+// ============================
+const io = new Server(server, { cors: corsOptions });
 
 io.use((socket, next) => {
   try {
@@ -94,21 +97,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// Make io available in routes
 app.set('io', io);
 
-/* ============================
-   MIDDLEWARE
-============================ */
-app.use(cors(corsOptions));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(cookieParser());
-app.use(morgan('dev'));
-
-/* ============================
-   ROUTES
-============================ */
+// ============================
+// ROUTES
+// ============================
 app.get('/', (req, res) => {
   res.json({ status: 'Pixalio API running' });
 });
@@ -120,15 +113,26 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/stories', storiesRoutes);
 
-/* ============================
-   DATABASE + SERVER START
-============================ */
+// ============================
+// SERVE REACT IN PRODUCTION
+// ============================
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+  app.use(express.static(path.join(__dirname, 'client/build')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+  });
+}
+
+// ============================
+// DATABASE CONNECTION + SERVER START
+// ============================
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log('Connected to MongoDB');
     server.listen(PORT, () => {
-      console.log('Server listening on port', PORT);
+      console.log(`Server running on port ${PORT}`);
     });
   })
   .catch((err) => {
