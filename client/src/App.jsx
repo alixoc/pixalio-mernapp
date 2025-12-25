@@ -506,7 +506,7 @@ function AppShell({ user, onLogout, socket }) {
                     </label>
                     {stories.map(g => (
                       <button key={g.author._id} type="button" onClick={() => { setActiveStoryGroup(g); setActiveStoryIndex(0); setStoryModalOpen(true); if (g.stories?.[0]) viewStory(g.stories[0]._id).catch(() => {}); }} className="flex-shrink-0 group">
-                        <div className="h-16 w-16 rounded-full p-0.5 bg-gradient-to-br from-emerald-400 to-teal-500 group-hover:scale-105 transition-all">
+                        <div className="h-15 w-15 rounded-full p-0.5 bg-gradient-to-br from-emerald-400 to-teal-500 group-hover:scale-105 transition-all">
                           <div className="h-full w-full rounded-full overflow-hidden bg-gray-900 border-2 border-gray-900">
                             {g.author.avatarUrl ? <img src={g.author.avatarUrl} alt="" className="h-full w-full object-cover" /> : <div className="h-full w-full flex items-center justify-center bg-gray-800 text-sm font-semibold text-white">{g.author.username?.[0]?.toUpperCase()}</div>}
                           </div>
