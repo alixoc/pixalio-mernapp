@@ -8,7 +8,7 @@ export default defineConfig({
     strictPort: false,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://pixalioweb-c3dybkbvfwdmd9e4.italynorth-01.azurewebsites.net',
         changeOrigin: true,
         secure: false
       }
