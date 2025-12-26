@@ -33,7 +33,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    if (origin.endsWith('.azurestaticapps.net')) {
+    if (origin.endsWith('.azurestaticapps.net') || origin.endsWith('.azurewebsites.net')) {
       return callback(null, true);
     }
 
@@ -118,9 +118,10 @@ app.use('/api/stories', storiesRoutes);
 // ============================
 if (process.env.NODE_ENV === 'production') {
   const path = require('path');
-  app.use(express.static(path.join(__dirname, 'client/build')));
+  // Vite uses 'dist' by default, and the folder is inside 'client/'
+  app.use(express.static(path.join(__dirname, '../client/dist')));
   app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+    res.sendFile(path.resolve(__dirname, '../client', 'dist', 'index.html'));
   });
 }
 
