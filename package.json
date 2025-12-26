@@ -1,16 +1,13 @@
 {
   "name": "pixalio-server",
   "version": "1.0.0",
-  "main": "server/server.js",
+  "main": "server.js",
   "type": "commonjs",
-  "engines": {
-    "node": ">=20.0.0"
-  },
   "scripts": {
     "dev": "nodemon server/server.js",
     "start": "node server/server.js",
-    "build": "cd client && npm install && npx vite build",
-    "postinstall": "cd client && npm install"
+    "build": "npm install --prefix client && npm run build --prefix client",
+    "install-all": "npm install && npm install --prefix client"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
